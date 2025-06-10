@@ -1,68 +1,61 @@
-import streamlit as st
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from io import BytesIO
 
-# Fonction de calcul du net à payer et des cotisations
-def calcul_paie(salaire_brut, cotisation_salariale, cotisation_patronale, primes):
-    total_brut = salaire_brut + primes
-    retenue_salariale = total_brut * cotisation_salariale / 100
-    charges_patronales = total_brut * cotisation_patronale / 100
-    salaire_net = total_brut - retenue_salariale
-    return total_brut, retenue_salariale, charges_patronales, salaire_net
+def generer_bulletin(...):
+    # calculs
+    total_brut = heures * taux_h + primes
+    retenue_sal = total_brut * cot_sal/100
+    charges_pat = total_brut * cot_pat/100
+    net_imposable = total_brut - retenue_sal
+    net_social = net_imposable  # simplifié
+    salaire_net = net_imposable
 
-# Fonction pour générer le bulletin de paie en PDF
-def generer_bulletin(nom, prenom, mois, salaire_brut, primes, cot_salariale, cot_patronale, pdf_file):
-    total_brut, retenue_salariale, charges_patronales, salaire_net = calcul_paie(
-        salaire_brut, cot_salariale, cot_patronale, primes)
-    
-    c = canvas.Canvas(pdf_file, pagesize=A4)
-    largeur, hauteur = A4
+    c = canvas.Canvas(pdf, pagesize=A4)
+    w, h = A4
+    y = h - 40
 
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(200, hauteur - 50, "Bulletin de Paie Simplifié")
+    # En-tête
+    c.setFont("Helvetica-Bold", 14)
+    c.drawCentredString(w/2, y, "Bulletin de Paie Simplifié")
+    y -= 30
 
-    c.setFont("Helvetica", 12)
-    c.drawString(50, hauteur - 100, f"Salarié : {prenom} {nom}")
-    c.drawString(50, hauteur - 120, f"Période : {mois}")
+    # Employeur
+    c.setFont("Helvetica", 10)
+    c.drawString(40, y, f"{nom_entreprise} – SIRET : {siret}")
+    c.drawString(40, y-14, adresse_entreprise.replace("\n"," "))
+    y -= 40
 
-    c.drawString(50, hauteur - 160, f"Salaire de base : {salaire_brut:.2f} €")
-    c.drawString(50, hauteur - 180, f"Primes : {primes:.2f} €")
-    c.drawString(50, hauteur - 200, f"Total brut : {total_brut:.2f} €")
-    c.drawString(50, hauteur - 220, f"Retenues salariales ({cot_salariale}%): {retenue_salariale:.2f} €")
-    c.drawString(50, hauteur - 240, f"Charges patronales ({cot_patronale}%): {charges_patronales:.2f} €")
-    c.drawString(50, hauteur - 260, f"Salaire net à payer : {salaire_net:.2f} €")
+    # Salarié
+    c.drawString(40, y, f"Salarié : {prenom} {nom} • Matricule : {matricule}")
+    c.drawString(40, y-14, f"N° SS : {ss}")
+    y -= 30
 
-    c.line(50, hauteur - 270, 550, hauteur - 270)
+    # Période
+    c.drawString(40, y, f"Période de paie : {periode}")
+    y -= 30
 
+    # Détail paie
+    c.drawString(40, y, f"Heures : {heures:.2f} × {taux_h:.2f} €")
+    c.drawString(300, y, f"Primes : {primes:.2f} €")
+    y -= 20
+    c.drawString(40, y, f"Salaire brut : {total_brut:.2f} €")
+    y -= 20
+    c.drawString(40, y, f> Cotisations salariales ({cot_sal:.1f} %) : {retenue_sal:.2f} €")
+    y -= 20
+    c.drawString(40, y, f> Cotisations patronales ({cot_pat:.1f} %) : {charges_pat:.2f} €")
+    y -= 30
+
+    # Totaux nets
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(40, y, f"Net imposable : {net_imposable:.2f} €")
+    y -= 14
+    c.drawString(40, y, f"Montant net social : {net_social:.2f} €")
+    y -= 14
+    c.drawString(40, y, f"Net à payer : {salaire_net:.2f} €")
+    y -= 40
+
+    # Pied
+    c.setFont("Helvetica-Oblique", 8)
+    c.drawCentredString(w/2, 50, "Bulletin conforme au modèle simplifié français (arrêté 31/01/2023)")
     c.save()
-
-# Streamlit app
-st.title("📝 Générateur de Bulletin de Paie (France)")
-
-with st.form("formulaire_paie"):
-    col1, col2 = st.columns(2)
-    with col1:
-        nom = st.text_input("Nom du salarié", "Dupont")
-        prenom = st.text_input("Prénom du salarié", "Jean")
-        mois = st.text_input("Période (mois)", "Juin 2025")
-    with col2:
-        salaire_brut = st.number_input("Salaire de base (€)", value=2000.00, step=10.0)
-        primes = st.number_input("Primes (€)", value=200.00, step=10.0)
-
-    cot_salariale = st.number_input("Taux de cotisation salariale (%)", value=22.0, step=0.1)
-    cot_patronale = st.number_input("Taux de cotisation patronale (%)", value=42.0, step=0.1)
-
-    submitted = st.form_submit_button("Générer le bulletin de paie")
-
-if submitted:
-    pdf_buffer = BytesIO()
-    generer_bulletin(nom, prenom, mois, salaire_brut, primes, cot_salariale, cot_patronale, pdf_buffer)
-    st.success("✅ Bulletin de paie généré avec succès !")
-
-    st.download_button(
-        label="📥 Télécharger le bulletin de paie",
-        data=pdf_buffer.getvalue(),
-        file_name=f"Bulletin_de_paie_{nom}_{mois}.pdf",
-        mime="application/pdf"
-    )
